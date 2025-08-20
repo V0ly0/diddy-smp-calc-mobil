@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Donut SMP Calculator — Poli</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root { color-scheme: light; }
+    .btn { @apply px-3 py-2 rounded-lg font-medium transition-all; }
+    .btn-outline { @apply border border-gray-200 hover:bg-gray-50; }
+    .btn-primary { @apply bg-black text-white hover:bg-gray-800; }
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes glow { 0% { box-shadow: 0 0 0 rgba(99,102,241,0.0); } 50% { box-shadow: 0 6px 30px rgba(99,102,241,0.06); } 100% { box-shadow: 0 0 0 rgba(99,102,241,0.0); } }
+    .animate-fade-up { animation: fadeUp 320ms cubic-bezier(.2,.9,.25,1) both; }
+    .animate-glow { animation: glow 2000ms infinite ease-in-out; }
+    @media (prefers-reduced-motion: reduce) { .animate-fade-up, .animate-glow { animation: none !important; transition: none !important; } }
+    .tab-trigger[aria-selected="true"] { background: white; color: black; box-shadow: 0 4px 18px rgba(2,6,23,0.06); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @media (max-width:640px) { .time1,.time2 { font-size:0.9rem; padding-left:10px; padding-right:10px; } }
+  </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  try {
+    const isMobileUA = /Mobi|Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const isNarrow = window.innerWidth <= 820;
+    // Allow only when BOTH userAgent looks like mobile and width is narrow
+    if (!(isMobileUA && isNarrow)) {
+      // Replace body with a friendly blocking message
+      document.documentElement.style.height = '100%';
+      document.body.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100vh;padding:20px;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;">
+          <div style="max-width:540px;text-align:center;border-radius:12px;padding:18px;">
+            <h2 style="font-size:20px;margin:0 0 8px 0;color:#111827;">⚠️ Application réservée aux téléphones</h2>
+            <p style="color:#6b7280;margin:0 0 16px 0;">Cette calculatrice fonctionne uniquement sur smartphone. Ouvre cette page depuis un téléphone pour y accéder.</p>
+            <div style="display:flex;gap:8px;justify-content:center;">
+              <button onclick="location.reload()" style="padding:10px 14px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;">Réessayer</button>
+              <a href="mailto:" style="padding:10px 14px;border-radius:8px;border:1px solid #e5e7eb;background:#111827;color:#fff;text-decoration:none;">Contact</a>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.style.margin = 0;
+      document.body.style.background = '#fff';
+      // Prevent further scripts from running (best-effort)
+      window.stop && window.stop();
+    }
+  } catch (e) {
+    // fail silently: if anything goes wrong, keep original page (do not break)
+    console.error("Mobile-only script error:", e);
+  }
+});
+</script>
+
+</head>
+<body class="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900 antialiased">
+  <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+    <header class="mb-8 sm:mb-12">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
+        <div class="max-w-2xl">
+          <h1 class="text-2xl sm:text-4xl font-extrabold mb-3 tracking-tight leading-tight">Donut <span class="text-indigo-600">SMP</span> Calculator</h1>
+          <p class="text-sm text-gray-500">T_T</p>
+        </div>
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <button id="resetAll" class="btn btn-outline flex-1 sm:flex-none flex items-center gap-2 shadow-sm" aria-label="Réinitialiser">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            <span>Reset</span>
+          </button>
+          <button id="shareLink" class="btn btn-outline flex-1 sm:flex-none flex items-center gap-2 shadow-sm" aria-label="Copier le lien">
+            <i data-lucide="share-2" class="w-4 h-4"></i>
+            <span id="shareText">Share</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="space-y-8">
+      <div class="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-sm">
+        <button class="tab-trigger rounded-lg font-medium transition-all flex items-center justify-center gap-2 py-2" data-tab="bones" aria-selected="true" role="tab"> <i data-lucide="bone" class="w-4 h-4"></i> Bones </button>
+        <button class="tab-trigger rounded-lg font-medium transition-all flex items-center justify-center gap-2 py-2" data-tab="skelly" aria-selected="false" role="tab"> <i data-lucide="skull" class="w-4 h-4"></i> Skelly </button>
+      </div>
+
+      <!-- Bones Calculator -->
+      <section id="tab-bones" class="space-y-6 animate-fade-up" role="tabpanel">
+        <div class="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+          <div class="bg-gradient-to-r from-indigo-50 to-white border-b border-gray-100 p-5">
+            <h2 class="flex items-center gap-3 text-xl font-semibold">
+              <span class="p-2 bg-white rounded-xl shadow-sm inline-flex"><i data-lucide="calculator" class="h-5 w-5 text-indigo-600"></i></span>
+              Bones Production
+            </h2>
+          </div>
+          <div class="p-6 lg:p-8">
+            <div class="grid gap-8 grid-cols-1 md:grid-cols-5">
+              <!-- Inputs -->
+              <div class="md:col-span-2 space-y-6">
+                <div class="space-y-4">
+                  <h3 class="text-lg font-medium mb-3">Configuration</h3>
+
+                  <label class="block text-sm text-gray-600">Number of Spawners</label>
+                  <input id="spawners" inputmode="numeric" type="number" min="0" step="1" class="w-full border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+
+                  <label class="block text-sm text-gray-600">Rate per Spawner (bones/min)</label>
+                  <input id="ratePerSpawner" inputmode="decimal" type="number" min="0" step="0.01" placeholder="2.07" class="w-full border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+
+                  <label class="block text-sm text-gray-600">Price per Bone ($) — facultatif</label>
+                  <input id="pricePerBone" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00" class="w-full border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-200" />
+
+                  <label class="block text-sm text-gray-600">Production Duration</label>
+                  <div class="flex gap-2">
+                    <input id="duration1" inputmode="decimal" type="number" min="0" step="0.5" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    <!-- Production Duration buttons -->
+                    <div class="flex gap-1 border border-gray-200 bg-white rounded-xl p-1">
+                      <button class="time1 btn px-3 h-10 rounded-none text-sm font-medium flex-1" data-unit="min">min</button>
+                      <button class="time1 btn px-3 h-10 rounded-none text-sm font-medium flex-1" data-unit="h">h</button>
+                      <button class="time1 btn px-3 h-10 rounded-none text-sm font-medium flex-1" data-unit="d">d</button>
+                      <button class="time1 btn px-3 h-10 rounded-none text-sm font-medium flex-1" data-unit="w">w</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Results -->
+              <div class="md:col-span-3 space-y-4">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-medium">Production Results</h3>
+                  <div class="flex gap-2">
+                    <button id="copyBonesSummaryBtn" class="btn btn-outline text-xs flex items-center" aria-label="Copier le résumé"><i data-lucide="copy" class="w-3 h-3 mr-1"></i><span id="copyBonesSummaryText">Copy Summary</span></button>
+                    <button id="copyBonesImageBtn" class="btn btn-primary text-xs flex items-center"><i data-lucide="image" class="w-3 h-3 mr-1"></i><span>Copy Image</span></button>
+                  </div>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <div class="p-4 rounded-xl border bg-white border-gray-100 hover:shadow-md transition-transform transform hover:-translate-y-1 motion-safe:transition-transform">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="zap" class="w-4 h-4 text-gray-400"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block">Production Rate</span>
+                          <span class="text-xs text-gray-400 block mt-1">Per minute</span>
+                        </div>
+                      </div>
+                      <div class="font-semibold text-lg" id="bonesPerMinute">0/min</div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 rounded-xl border bg-white border-gray-100 hover:shadow-md transition-transform transform hover:-translate-y-1">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="clock" class="w-4 h-4 text-gray-400"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block">Hourly Production</span>
+                          <span class="text-xs text-gray-400 block mt-1">Per hour</span>
+                        </div>
+                      </div>
+                      <div class="font-semibold text-lg" id="bonesPerHour">0/h</div>
+                    </div>
+                  </div>
+
+                  <div id="valueRateCard" class="hidden p-4 rounded-xl border bg-white border-gray-100 transition">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="dollar-sign" class="w-4 h-4 text-gray-400"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block">Value Rate</span>
+                          <span class="text-xs text-gray-400 block mt-1">Per minute</span>
+                        </div>
+                      </div>
+                      <div class="font-semibold text-lg" id="valuePerMinute">0/min</div>
+                    </div>
+                  </div>
+
+                  <div id="hourlyValueCard" class="hidden p-4 rounded-xl border bg-white border-gray-100 transition">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="dollar-sign" class="w-4 h-4 text-gray-400"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block">Hourly Value</span>
+                          <span class="text-xs text-gray-400 block mt-1">Per hour</span>
+                        </div>
+                      </div>
+                      <div class="font-semibold text-lg" id="valuePerHour">0/h</div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 rounded-xl border bg-white border-gray-100 transition">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="clock" class="w-4 h-4 text-gray-400"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block">Total Duration</span>
+                          <span class="text-xs text-gray-400 block mt-1">Production time</span>
+                        </div>
+                      </div>
+                      <div class="font-semibold text-lg" id="totalDuration">0 min</div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 rounded-xl border bg-indigo-50 border-indigo-100 shadow-sm transition">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="target" class="w-4 h-4 text-indigo-500"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block">Total Bones</span>
+                          <span class="text-xs text-gray-400 block mt-1">Final production</span>
+                        </div>
+                      </div>
+                      <div class="font-bold text-lg" id="totalBones">0</div>
+                    </div>
+                  </div>
+
+                  <div id="totalValueCard" class="hidden p-4 rounded-xl border bg-green-50 border-green-100 shadow-sm transition">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="dollar-sign" class="w-4 h-4 text-green-600"></i>
+                        <div>
+                          <span class="text-sm font-medium text-green-700 block">Total Resale Value</span>
+                          <span class="text-xs text-green-600 block mt-1" id="totalValueSubtitle"></span>
+                        </div>
+                      </div>
+                      <div class="font-bold text-lg text-green-800" id="totalValue">0</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="pt-4">
+                  <div id="bonesButtonsPrice" class="hidden grid gap-3 sm:grid-cols-2">
+                    <button id="copyBonesOnlyBtn" class="btn btn-outline py-3">Copy Bones</button>
+                    <button id="copyValueOnlyBtn" class="btn bg-green-600 text-white hover:bg-green-700 py-3">Copy Value</button>
+                  </div>
+                  <div id="bonesButtonsNoPrice" class="grid gap-3">
+                    <button id="copyBonesResultBtn" class="btn btn-primary w-full py-3">Copy Result</button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Skelly Calculator -->
+      <section id="tab-skelly" class="space-y-6 hidden animate-fade-up" role="tabpanel">
+        <div class="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+          <div class="bg-gradient-to-r from-pink-50 to-white border-b border-gray-100 p-5">
+            <h2 class="flex items-center gap-3 text-xl font-semibold">
+              <span class="p-2 bg-white rounded-xl shadow-sm inline-flex"><i data-lucide="skull" class="h-5 w-5 text-pink-600"></i></span>
+              Skelly Spawner
+            </h2>
+          </div>
+          <div class="p-6 lg:p-8">
+            <div class="grid gap-8 grid-cols-1 md:grid-cols-5">
+              <div class="md:col-span-2 space-y-6">
+                <h3 class="text-lg font-medium">Configuration</h3>
+                <label class="block text-sm text-gray-600">Cost per Skelly (minutes)</label>
+                <input id="minutesPerSkelly" inputmode="numeric" type="number" min="1" step="1" placeholder="500" class="w-full border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-200" />
+
+                <label class="block text-sm text-gray-600">Number of Accounts</label>
+                <input id="accounts" inputmode="numeric" type="number" min="1" step="1" class="w-full border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-200" />
+
+                <label class="block text-sm text-gray-600">Available Time per Account</label>
+                <div class="flex gap-2">
+                  <input id="duration2" inputmode="decimal" type="number" min="0" step="0.5" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-200" />
+                  <!-- Skelly Available Time buttons -->
+                  <div class="flex gap-1 border border-gray-200 bg-white rounded-xl p-1 mt-4">
+                    <button class="time2 btn px-3 h-10 rounded-none text-sm font-medium flex-1" data-unit="min">min</button>
+                    <button class="time2 btn px-3 h-10 rounded-none text-sm font-medium flex-1" data-unit="h">h</button>
+                    <button class="time2 btn px-3 h-10 rounded-none text-sm font-medium flex-1" data-unit="d">d</button>
+                    <button class="time2 btn px-3 h-10 rounded-none text-sm font-medium flex-1" data-unit="w">w</button>
+                  </div>
+                </div>
+
+                <label class="block text-sm text-gray-600">Target Skellys</label>
+                <input id="targetSkelly" inputmode="numeric" type="number" min="1" step="1" class="w-full border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-200" />
+              </div>
+
+              <div class="md:col-span-3 space-y-4">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-medium">Skelly Results</h3>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <div class="p-4 rounded-xl border bg-white border-gray-100 transition">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="clock" class="w-4 h-4 text-gray-400"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block">Total Available Time</span>
+                          <span class="text-xs text-gray-400 block mt-1">All accounts combined</span>
+                        </div>
+                      </div>
+                      <div class="font-semibold text-lg" id="skTotalTime">0</div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 rounded-xl border bg-indigo-50 border-indigo-100 shadow-sm transition">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="skull" class="w-4 h-4 text-indigo-500"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block">Attainable Skellys</span>
+                          <span class="text-xs text-gray-400 block mt-1">With current time</span>
+                        </div>
+                      </div>
+                      <div class="font-bold text-lg" id="skAttainable">0</div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 rounded-xl border bg-white border-gray-100 transition">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="target" class="w-4 h-4 text-gray-400"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block">Progress to Next</span>
+                          <span class="text-xs text-gray-400 block mt-1"><span id="skRemainder">0</span> min remaining</span>
+                        </div>
+                      </div>
+                      <div class="font-semibold text-lg" id="skProgress">0%</div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 rounded-xl border bg-white border-gray-100 transition">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <i data-lucide="clock" class="w-4 h-4 text-gray-400"></i>
+                        <div>
+                          <span class="text-sm font-medium text-gray-700 block" id="skTimeForOneLabel">Time for 1 Skelly</span>
+                          <span class="text-xs text-gray-400 block mt-1" id="skAccountsLabel"></span>
+                        </div>
+                      </div>
+                      <div class="font-semibold text-lg" id="skTimeForOne">0</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="pt-4 grid gap-3 sm:grid-cols-2">
+                  <button id="copySkellyCountBtn" class="btn btn-outline py-3">Copy Count</button>
+                  <button id="copySkellyImageBtn2" class="btn btn-primary py-3">Copy as Image</button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="mt-16 pt-8 border-t border-gray-100 text-center">
+        <p class="text-sm text-gray-500 max-w-2xl mx-auto">Made by <strong>LordT_T</strong> — For Diddy SMP</p>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // Utilities
+    const clampNumber = (n, min = 0, max = Number.MAX_SAFE_INTEGER) => {
+      if (n === null || n === undefined || Number.isNaN(n)) return min;
+      return Math.min(Math.max(Number(n), min), max);
+    };
+
+    const timeUnits = { min: { multiplier: 1, label: 'min', max: 300 }, h: { multiplier: 60, label: 'h', max: 72 }, d: { multiplier: 60 * 24, label: 'd', max: 30 }, w: { multiplier: 60 * 24 * 7, label: 'w', max: 12 } };
+    const toMinutes = (value, unit) => clampNumber(value) * timeUnits[unit].multiplier;
+    const formatNumber = (v, decimals = 2) => {
+      if (v === 0) return '0';
+      if (v < 0.01 && v > 0) return '< 0.01';
+      return new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals, minimumFractionDigits: v >= 1000 ? 0 : Math.min(decimals, 2) }).format(v);
+    };
+    const formatDuration = (minutes) => { if (minutes < 60) return `${formatNumber(minutes)} min`; if (minutes < 1440) return `${formatNumber(minutes / 60, 1)} h`; if (minutes < 10080) return `${formatNumber(minutes / 1440, 1)} d`; return `${formatNumber(minutes / 10080, 1)} w`; };
+
+    // State
+    const state = { spawners: 1, ratePerSpawner: 2.07, timeUnit1: 'h', duration1: 1, pricePerBone: 0, minutesPerSkelly: 500, accounts: 1, timeUnit2: 'h', duration2: 8, targetSkelly: 1 };
+
+    // DOM refs
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+    const spawnersEl = $('#spawners'); const ratePerSpawnerEl = $('#ratePerSpawner'); const pricePerBoneEl = $('#pricePerBone'); const duration1El = $('#duration1');
+    const minutesPerSkellyEl = $('#minutesPerSkelly'); const accountsEl = $('#accounts'); const duration2El = $('#duration2'); const targetSkellyEl = $('#targetSkelly');
+
+    const bonesPerMinuteEl = $('#bonesPerMinute'); const bonesPerHourEl = $('#bonesPerHour'); const totalDurationEl = $('#totalDuration'); const totalBonesEl = $('#totalBones');
+    const valuePerMinuteEl = $('#valuePerMinute'); const valuePerHourEl = $('#valuePerHour'); const totalValueEl = $('#totalValue'); const totalValueSubtitleEl = $('#totalValueSubtitle');
+
+    const valueRateCard = $('#valueRateCard'); const hourlyValueCard = $('#hourlyValueCard'); const totalValueCard = $('#totalValueCard');
+    const copyBonesSummaryBtn = $('#copyBonesSummaryBtn'); const copyBonesImageBtn = $('#copyBonesImageBtn'); const copyBonesSummaryText = $('#copyBonesSummaryText');
+
+    const skTotalTimeEl = $('#skTotalTime'); const skAttainableEl = $('#skAttainable'); const skProgressEl = $('#skProgress'); const skRemainderEl = $('#skRemainder'); const skTimeForOneEl = $('#skTimeForOne'); const skTimeForOneLabelEl = $('#skTimeForOneLabel'); const skAccountsLabelEl = $('#skAccountsLabel');
+
+    const resetAllBtn = $('#resetAll'); const shareBtn = $('#shareLink'); const shareText = $('#shareText');
+    const tabButtons = $$('.tab-trigger'); const tabBones = $('#tab-bones'); const tabSkelly = $('#tab-skelly');
+
+    function computeBones() {
+      const validSpawners = clampNumber(state.spawners, 0); const validRate = clampNumber(state.ratePerSpawner, 0); const validPrice = clampNumber(state.pricePerBone, 0);
+      const perMinute = validSpawners * validRate; const perHour = perMinute * 60; const totalMinutes = toMinutes(state.duration1, state.timeUnit1); const total = perMinute * totalMinutes;
+      return { perMinute, perHour, total, totalMinutes, valuePerMinute: perMinute * validPrice, valuePerHour: perHour * validPrice, totalValue: total * validPrice, priceEnabled: validPrice > 0 };
+    }
+
+    function computeSkelly() {
+      const cost = clampNumber(state.minutesPerSkelly, 1); const acc = clampNumber(state.accounts, 1); const target = clampNumber(state.targetSkelly, 1);
+      const totalMinutes = toMinutes(state.duration2, state.timeUnit2) * acc; const attainable = Math.floor(totalMinutes / cost); const remainder = totalMinutes % cost; const neededForTarget = cost * target; const timeWithAccounts = neededForTarget / acc;
+      return { totalMinutes, attainable, remainder, timeWithAccounts, progressPercent: (remainder / cost) * 100, cost, acc, target };
+    }
+
+    function renderBones(calcs) {
+      bonesPerMinuteEl.textContent = `${formatNumber(calcs.perMinute)}/min`;
+      bonesPerHourEl.textContent = `${formatNumber(calcs.perHour)}/h`;
+      totalDurationEl.textContent = formatDuration(calcs.totalMinutes);
+      totalBonesEl.textContent = formatNumber(calcs.total);
+
+      valueRateCard.classList.toggle('hidden', !calcs.priceEnabled);
+      hourlyValueCard.classList.toggle('hidden', !calcs.priceEnabled);
+      totalValueCard.classList.toggle('hidden', !calcs.priceEnabled);
+
+      if (calcs.priceEnabled) {
+        valuePerMinuteEl.textContent = `${formatNumber(calcs.valuePerMinute)}/min`;
+        valuePerHourEl.textContent = `${formatNumber(calcs.valuePerHour)}/h`;
+        totalValueEl.textContent = `${formatNumber(calcs.totalValue)}`;
+        totalValueSubtitleEl.textContent = `${formatNumber(calcs.total)} bones × ${formatNumber(state.pricePerBone)}`;
+      }
+    }
+
+    function renderSkelly(calcs) {
+      skTotalTimeEl.textContent = formatDuration(calcs.totalMinutes); skAttainableEl.textContent = String(calcs.attainable); skProgressEl.textContent = `${formatNumber(calcs.progressPercent)}%`;
+      skRemainderEl.textContent = `${formatNumber(calcs.remainder)}`; skTimeForOneEl.textContent = formatDuration(calcs.timeWithAccounts);
+      const s = calcs.target > 1 ? 's' : ''; skTimeForOneLabelEl.textContent = `Time for ${calcs.target} Skelly${s}`; skAccountsLabelEl.textContent = `With ${calcs.acc} account${calcs.acc > 1 ? 's' : ''}`;
+    }
+
+    function render() { const bones = computeBones(); const sk = computeSkelly(); renderBones(bones); renderSkelly(sk); }
+
+    async function copyText(text, indicatorEl) { try { await navigator.clipboard.writeText(text); if (indicatorEl) { const old = indicatorEl.textContent; indicatorEl.textContent = '✓ Copied!'; setTimeout(() => indicatorEl.textContent = old, 1500); } } catch (e) { console.error('Copy failed', e); alert('Impossible de copier le texte — votre navigateur peut restreindre le presse-papiers.'); } }
+
+    // Create an image (canvas) representation of the results.
+    function generateResultCanvas(data, type) {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const width = 800; const height = 420;
+      const canvas = document.createElement('canvas'); canvas.width = width * dpr; canvas.height = height * dpr; canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
+      const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+
+      // background
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, width, height);
+      // header
+      ctx.fillStyle = '#111827'; ctx.font = '700 20px Inter, system-ui, -apple-system, "Segoe UI", Roboto'; ctx.fillText(type === 'bones' ? 'Bones Production' : 'Skelly Summary', 28, 44);
+      // sub-line
+      ctx.fillStyle = '#6b7280'; ctx.font = '400 12px Inter, system-ui'; ctx.fillText('Donut SMP — generated result', 28, 68);
+
+      // draw a card-like area
+      ctx.fillStyle = '#f8fafc'; ctx.fillRect(24, 84, width - 48, height - 108);
+
+      // content
+      ctx.fillStyle = '#111827'; ctx.font = '600 18px Inter, system-ui';
+      if (type === 'bones') {
+        ctx.fillText(`Total Bones: ${formatNumber(data.total)}`, 48, 120);
+        ctx.font = '500 14px Inter, system-ui'; ctx.fillStyle = '#374151'; ctx.fillText(`Rate: ${formatNumber(data.perMinute)}/min · ${formatNumber(data.perHour)}/h`, 48, 150);
+        ctx.fillText(`Duration: ${formatDuration(data.totalMinutes)}`, 48, 176);
+        if (data.priceEnabled) {
+          ctx.fillStyle = '#065f46'; ctx.font = '600 16px Inter, system-ui'; ctx.fillText(`Total Value: $${formatNumber(data.totalValue)}`, 48, 206);
+        }
+      } else if (type === 'skelly') {
+        ctx.fillText(`Attainable Skellys: ${data.attainable}`, 48, 120);
+        ctx.font = '500 14px Inter, system-ui'; ctx.fillStyle = '#374151'; ctx.fillText(`Total Time: ${formatDuration(data.totalMinutes)}`, 48, 150);
+        ctx.fillText(`Progress: ${formatNumber(data.progressPercent)}% · ${formatNumber(data.remainder)} min remaining`, 48, 176);
+        ctx.fillText(`Time for ${data.target} : ${formatDuration(data.timeWithAccounts)}`, 48, 202);
+      }
+
+      // small footer
+      ctx.fillStyle = '#9ca3af'; ctx.font = '400 11px Inter, system-ui'; ctx.fillText('Generated with Donut SMP Calculator', 48, height - 28);
+
+      return canvas;
+    }
+
+    async function copyAsImage(data, type, indicatorEl) {
+      try {
+        const canvas = generateResultCanvas(data, type);
+        // try to copy to clipboard as image (supported on Chromium & some browsers)
+        if (navigator.clipboard && navigator.clipboard.write && canvas.toBlob) {
+          await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+          const item = new ClipboardItem({ 'image/png': blob });
+          await navigator.clipboard.write([item]);
+          if (indicatorEl) {
+            const old = indicatorEl.textContent; indicatorEl.textContent = '✓ Copied!'; setTimeout(() => indicatorEl.textContent = old, 1500);
+          } else {
+            alert('Image copiée dans le presse-papiers.');
+          }
+          return;
+        }
+
+        // Fallback: open image in new tab and offer download
+        const dataUrl = canvas.toDataURL('image/png');
+        const w = window.open('');
+        if (w) {
+          w.document.write(`<title>Result Image</title><img src="${dataUrl}" style="max-width:100%;height:auto;display:block;margin:16px auto;">`);
+        } else {
+          // popup blocked — force download
+          const a = document.createElement('a'); a.href = dataUrl; a.download = `${type}-result.png`; document.body.appendChild(a); a.click(); a.remove();
+        }
+      } catch (e) {
+        console.error('copyAsImage failed', e); alert('Impossible de copier l\'image — essayez de télécharger le PNG.');
+      }
+    }
+
+    function bind() {
+      spawnersEl.addEventListener('input', e => { state.spawners = clampNumber(parseFloat(e.target.value) || 0, 0); render(); });
+      ratePerSpawnerEl.addEventListener('input', e => { state.ratePerSpawner = clampNumber(parseFloat(e.target.value) || 0, 0); render(); });
+      pricePerBoneEl.addEventListener('input', e => { state.pricePerBone = clampNumber(parseFloat(e.target.value) || 0, 0); render(); });
+      duration1El.addEventListener('input', e => { state.duration1 = clampNumber(parseFloat(e.target.value) || 0, 0); render(); });
+
+      minutesPerSkellyEl.addEventListener('input', e => { state.minutesPerSkelly = clampNumber(parseFloat(e.target.value) || 0, 1); render(); });
+      accountsEl.addEventListener('input', e => { state.accounts = clampNumber(parseFloat(e.target.value) || 0, 1); render(); });
+      duration2El.addEventListener('input', e => { state.duration2 = clampNumber(parseFloat(e.target.value) || 0, 0); render(); });
+      targetSkellyEl.addEventListener('input', e => { state.targetSkelly = clampNumber(parseFloat(e.target.value) || 0, 1); render(); });
+
+      $$('.time1').forEach(btn => btn.addEventListener('click', () => { state.timeUnit1 = btn.dataset.unit; $$('.time1').forEach(b => b.classList.remove('bg-black','text-white')); btn.classList.add('bg-black','text-white'); render(); }));
+      $$('.time2').forEach(btn => btn.addEventListener('click', () => { state.timeUnit2 = btn.dataset.unit; $$('.time2').forEach(b => b.classList.remove('bg-black','text-white')); btn.classList.add('bg-black','text-white'); render(); }));
+
+      tabButtons.forEach(b => b.addEventListener('click', () => {
+        tabButtons.forEach(x => x.setAttribute('aria-selected', String(x === b)));
+        const tab = b.dataset.tab; tabBones.classList.toggle('hidden', tab !== 'bones'); tabSkelly.classList.toggle('hidden', tab !== 'skelly');
+      }));
+
+      copyBonesSummaryBtn.addEventListener('click', () => { const b = computeBones(); copyText(`${formatNumber(b.total)} bones in ${state.duration1} ${state.timeUnit1}`, copyBonesSummaryText); });
+      copyBonesImageBtn.addEventListener('click', async () => { const b = computeBones(); await copyAsImage(b, 'bones', copyBonesImageBtn); });
+
+      $('#copySkellyCountBtn').addEventListener('click', () => { const s = computeSkelly(); copyText(`${s.attainable} skellys`); });
+      $('#copySkellyImageBtn2').addEventListener('click', async () => { const s = computeSkelly(); await copyAsImage(s, 'skelly'); });
+
+      resetAllBtn.addEventListener('click', () => {
+        state.spawners = 1; state.ratePerSpawner = 2.07; state.timeUnit1 = 'h'; state.duration1 = 1; state.pricePerBone = 0;
+        state.minutesPerSkelly = 500; state.accounts = 1; state.timeUnit2 = 'h'; state.duration2 = 8; state.targetSkelly = 1;
+        hydrateInputs(); render();
+      });
+
+      shareBtn.addEventListener('click', async () => { await copyText(window.location.href, shareText); });
+    }
+
+    function hydrateInputs() {
+      spawnersEl.value = state.spawners; ratePerSpawnerEl.value = state.ratePerSpawner; pricePerBoneEl.value = state.pricePerBone; duration1El.value = state.duration1;
+      duration2El.value = state.duration2; minutesPerSkellyEl.value = state.minutesPerSkelly; accountsEl.value = state.accounts; targetSkellyEl.value = state.targetSkelly;
+      $$('.time1').forEach(b => b.classList.toggle('bg-black', b.dataset.unit === state.timeUnit1)); $$('.time1').forEach(b => b.classList.toggle('text-white', b.dataset.unit === state.timeUnit1));
+      $$('.time2').forEach(b => b.classList.toggle('bg-black', b.dataset.unit === state.timeUnit2)); $$('.time2').forEach(b => b.classList.toggle('text-white', b.dataset.unit === state.timeUnit2));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { if (window.lucide) lucide.createIcons(); bind(); hydrateInputs(); render(); });
+  </script>
+</body>
+</html>
